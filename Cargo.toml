@@ -1,0 +1,21 @@
+[package]
+name = "flibot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.53"
+reqwest = { version = "0.11", features = ["json", "socks", "gzip"] }
+tokio = { version = "1.8", features = ["net", "rt-multi-thread", "macros", "full"] }
+url = "2.2.2"
+# sxd-xpath = "0.4.2"
+# sxd-document = "0.3.2"
+scraper = "0.12.0"
+derive_more = "0.99"
+teloxide = { version = "0.6", features = ["macros", "auto-send"] }
+log = "0.4"
+pretty_env_logger = "0.4.0"
+bytes = "1.1.0"
+regex = "1.5.4"
