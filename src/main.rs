@@ -1,15 +1,23 @@
 use anyhow::Result;
+use sqlx::sqlite::{
+  SqlitePoolOptions,
+  // SqliteConnectOptions,
+};
 
+mod db;
 mod fetcher;
+mod parser_types;
 mod parser;
+mod cache;
 mod telegram;
 // use fetcher::DEFAULT_CONF;
 
 #[tokio::main]
 async fn main() -> Result<()> {
   // let search = String::from("Анджей Сапковски");
-  // let page = fetcher::search(DEFAULT_CONF, search).await?;
-  // let page = fetcher::book(&DEFAULT_CONF, "/b/577468".into()).await?;
+  // let page = fetcher::search(&fetcher::DEFAULT_CONF, search).await?;
+  // let page = fetcher::book(&fetcher::DEFAULT_CONF, "/b/577468".into()).await?;
+  // let page = fetcher::author(&fetcher::DEFAULT_CONF, "/a/10805".into()).await?;
   // std::fs::write("/tmp/out2", &page)?;
   // let page = std::fs::read_to_string("/tmp/out2")?;
   // println!("{}", page);
@@ -23,7 +31,20 @@ async fn main() -> Result<()> {
   // let bookinfo = parser::book_info(page)?;
   // println!("Bookinfo:\n{}", bookinfo);
 
-  telegram::start_bot().await?;
+  // let authorinfo = parser::author_info(page)?;
+  // println!("Authorinfo:\n{}", authorinfo);
+
+  let database_url = std::env::var("DATABASE_URL")
+    .expect("Specify DATABASE_URL env var.");
+  // let conn_str : SqliteConnectOptions = database_url.parse()?;
+  let sqlxpool = SqlitePoolOptions::new()
+      // .max_connections(10)
+    .connect(&*database_url).await?;
+
+  sqlx::migrate!().run(&sqlxpool).await?;
+
+  // uncomment to start)
+  telegram::start_bot(sqlxpool).await?;
   
   Ok(())
 }

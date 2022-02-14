@@ -1,0 +1,435 @@
+{
+  "db": "SQLite",
+  "2569bb20489abad335f1ebcb49aaa469ed9fbb7f66ad57aa4246741c5d850d4e": {
+    "query": "\n  SELECT\n    id,\n    title,\n    author,\n    fb2_url,\n    mark,\n    annotation,\n    cover_url,\n    cover,\n    fb2_filename,\n    fb2\n  FROM books\n  WHERE id = $1\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "mark",
+          "ordinal": 4,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 7,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "2f5a76fc3179240f5ff1051fb3ce33c857a3b037f091b04cf9a4d2d379f6ef1a": {
+    "query": "\n    INSERT INTO authors\n    (id, name, url, books_list_fetched, last_update)\n    VALUES ($1, $2, $3, $4, datetime('now'))\n    ON CONFLICT DO UPDATE SET\n      books_list_fetched = (CASE WHEN $4 THEN true\n                            ELSE books_list_fetched END)\n    RETURNING id, name, url, books_list_fetched\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "books_list_fetched",
+          "ordinal": 3,
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Right": 4
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "3c8021e342db9f247fd5305e94433e981d8b8328fb2bc8ad6d7a079cd6a2b095": {
+    "query": "\n  SELECT\n    id,\n    title,\n    author,\n    fb2_url,\n    mark,\n    annotation,\n    cover_url,\n    cover,\n    fb2_filename,\n    fb2\n  FROM books\n  WHERE author = $1\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "mark",
+          "ordinal": 4,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 7,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "78279ad8bba6f392a888d25bcb2209dfe893599659e1549f88e2964db6055984": {
+    "query": "\n    UPDATE books\n    SET fb2=$1, fb2_filename=$2\n    WHERE id=$3\n    RETURNING\n      id,\n      title,\n      author,\n      mark,\n      annotation,\n      cover_url,\n      cover,\n      fb2_url,\n      fb2_filename,\n      fb2\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "mark",
+          "ordinal": 3,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 6,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        }
+      ],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ]
+    }
+  },
+  "906a031f905facf2860e49dc4ff8c4b8b5f35d8821e2d8b17c1a1aa8688d689f": {
+    "query": "\n    UPDATE books\n    SET cover=$1\n    WHERE id=$2\n    RETURNING\n      id,\n      title,\n      author,\n      mark,\n      annotation,\n      cover_url,\n      cover,\n      fb2_url,\n      fb2_filename,\n      fb2\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "mark",
+          "ordinal": 3,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 6,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ]
+    }
+  },
+  "e870905a4c818989cff72049413c4387f8f5e2095e3b01f1911ca568f557d860": {
+    "query": "\n  SELECT\n    id,\n    name,\n    url,\n    books_list_fetched\n  FROM authors\n  WHERE id = $1\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "books_list_fetched",
+          "ordinal": 3,
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "f7a9e5f2b209a60db0924a5228636a6f9c0034e11f425d781c49a118af829117": {
+    "query": "\n    INSERT INTO books\n    (id, title, author, annotation, cover_url, fb2_url, mark)\n    VALUES ($1, $2, $3, $4, $5, $6, $7)\n    ON CONFLICT DO UPDATE SET\n     annotation=(CASE WHEN annotation IS NULL THEN $4\n                 ELSE annotation END),\n     cover_url=(CASE WHEN cover_url IS NULL THEN $5\n                ELSE cover_url END),\n     mark=(CASE WHEN mark IS NULL THEN $7\n           ELSE mark END)\n    RETURNING\n       id,\n       title,\n       author,\n       mark,\n       annotation,\n       cover_url,\n       cover,\n       fb2_url,\n       fb2_filename,\n       fb2\n  ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "mark",
+          "ordinal": 3,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 6,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        }
+      ],
+      "parameters": {
+        "Right": 7
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true
+      ]
+    }
+  }
+}
