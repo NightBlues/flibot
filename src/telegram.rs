@@ -311,7 +311,7 @@ async fn callback_handler(
 
 pub async fn start_bot(sqlxpool : sqlx::sqlite::SqlitePool) -> Result<()> {
   // TELOXIDE_TOKEN
-  teloxide::enable_logging!();
+  // teloxide::enable_logging!();
   log::info!("Starting flibot...");
 
   let bot = Bot::from_env().auto_send();
