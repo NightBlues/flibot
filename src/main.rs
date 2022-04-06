@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
   // let search = String::from("Анджей Сапковски");
   // let page = fetcher::search(&fetcher::DEFAULT_CONF, search).await?;
   // let page = fetcher::book(&fetcher::DEFAULT_CONF, "/b/577468".into()).await?;
-  // let page = fetcher::author(&fetcher::DEFAULT_CONF, "/a/10805".into()).await?;
+  // let page = fetcher::author(&fetcher::DEFAULT_CONF, "/a/107253".into()).await?;
   // std::fs::write("/tmp/out2", &page)?;
   // let page = std::fs::read_to_string("/tmp/out2")?;
   // println!("{}", page);
@@ -31,9 +31,16 @@ async fn main() -> Result<()> {
   // let bookinfo = parser::book_info(page)?;
   // println!("Bookinfo:\n{}", bookinfo);
 
-  // let authorinfo = parser::author_info(page)?;
+  // let authorinfo = parser::author_info(107253, page)?;
   // println!("Authorinfo:\n{}", authorinfo);
 
+
+  // pretty_env_logger::init_timed();
+  pretty_env_logger::formatted_timed_builder()
+    .write_style(pretty_env_logger::env_logger::WriteStyle::Auto)
+    .filter(Some("flibot"), log::LevelFilter::Info)
+    .filter(Some("teloxide"), log::LevelFilter::Info)
+    .init();
   let database_url = std::env::var("DATABASE_URL")
     .expect("Specify DATABASE_URL env var.");
   // let conn_str : SqliteConnectOptions = database_url.parse()?;

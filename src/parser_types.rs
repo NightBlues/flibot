@@ -8,6 +8,7 @@ use scraper::{ElementRef};
 use teloxide::utils::markdown::{
   escape as mdescape,
 };
+use itertools::Itertools;
 
 
 use crate::db;
@@ -60,6 +61,17 @@ pub fn author_id_from_url(author_link: &String) -> Result<u64> {
   Ok(author_id)
 }
 
+pub fn series_id_from_url(series_link: &String) -> Result<u64> {
+  let series_id_re = Regex::new("/s/(\\d+).*")?;
+  let series_id = series_id_re.captures_iter(&series_link).next()
+    .ok_or_else(|| Error::msg("Could not find series id in link"))?
+    .get(1)
+    .ok_or_else(|| Error::msg("Could not find series id int in link"))?
+    .as_str();
+  let series_id = series_id.to_string().parse::<u64>()?;
+  Ok(series_id)
+}
+
 
 
 #[derive(Display, Clone)]
@@ -79,17 +91,23 @@ pub struct BookInfo {
   pub fb2url: Anchor,
   pub annotation: String,
   pub cover_url: Option<String>,
+  pub series: Option<(i64, String)>,
 }
 
 impl TryFrom<BookInfo> for db::Book {
   type Error = Error;
   fn try_from(
-    BookInfo {id, title, author, fb2url, annotation, cover_url}: BookInfo
+    BookInfo {id, title, author, fb2url, annotation, cover_url,
+              series,}: BookInfo
   ) -> Result<db::Book> {
     // let id = book_id_from_url(&fb2url.link)? as i64;
     let author = author_id_from_url(&author.link)? as i64;
     let annotation = Some(annotation);
     let Anchor {link:fb2_url, ..} = fb2url;
+    let (series, series_title) = match series {
+      None => (None, None),
+      Some((a, b)) => (Some(a), Some(b)),
+    };
     Ok(db::Book {
       id,
       title,
@@ -100,7 +118,9 @@ impl TryFrom<BookInfo> for db::Book {
       cover:None,
       fb2_url,
       fb2_filename:None,
-      fb2:None
+      fb2:None,
+      series,
+      series_title
     })
   }
 }
@@ -124,20 +144,22 @@ impl TryFrom<BookInfo> for db::Author {
 
 impl From<(db::Book, db::Author, String)> for BookInfo {
   fn from(
-    (db::Book {id, title, fb2_url, cover_url, ..},
+    (db::Book {id, title, fb2_url, cover_url, series, series_title, ..},
      db::Author {name, url:author_url, ..},
      annotation):
     (db::Book, db::Author, String)
   ) -> BookInfo {
     let author = Anchor {link: author_url, title: name};
     let fb2url = Anchor {link: fb2_url, title: "(fb2)".to_string()};
+    let series = series.zip(series_title);
     BookInfo {
       id,
       title,
       author,
       fb2url,
       annotation,
-      cover_url
+      cover_url,
+      series
     }
   }
 }
@@ -149,6 +171,7 @@ pub struct BookInfoShort {
   pub fb2_url: String,
   pub title: String,
   pub mark: Option<f32>,
+  pub series: Option<(i64, String)>,
 }
 
 impl fmt::Display for BookInfoShort {
@@ -163,12 +186,14 @@ impl fmt::Display for BookInfoShort {
 
 /// Getting BookInfoShort from db (from cache)
 impl From<db::Book> for BookInfoShort {
-  fn from(db::Book {id, title, mark, fb2_url, ..} : db::Book) -> BookInfoShort {
+  fn from(db::Book {id, title, mark, fb2_url, series, series_title, ..} : db::Book) -> BookInfoShort {
+    let series = series.zip(series_title);
     BookInfoShort {
       book_id: id as u64,
       fb2_url,
       title,
       mark,
+      series
     }
   }
 }
@@ -177,8 +202,15 @@ impl From<db::Book> for BookInfoShort {
 impl From<(i64, BookInfoShort)> for db::Book {
   fn from(
     (author_id,
-     BookInfoShort {book_id, fb2_url, title, mark}) : (i64, BookInfoShort)
+     BookInfoShort {book_id, fb2_url, title, mark,
+                    series,}
+    ) : (i64, BookInfoShort)
   ) -> db::Book {
+    // let (series, series_title) = series.unzip();
+    let (series, series_title) = match series {
+      None => (None, None),
+      Some((a, b)) => (Some(a), Some(b)),
+    };
     db::Book {
       id:book_id as i64,
       title,
@@ -190,6 +222,8 @@ impl From<(i64, BookInfoShort)> for db::Book {
       cover:None,
       fb2:None,
       fb2_filename:None,
+      series,
+      series_title
     }    
   }
 }
@@ -204,10 +238,28 @@ pub struct AuthorInfo {
 impl fmt::Display for AuthorInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let AuthorInfo {author, books, ..} = self;
-    let books = books.iter().enumerate()
-      .map(|(i, book)| format!(r#"{}\. {}"#, i, book))
+    // let mut books = books.clone();
+    // books.sort_by_key(
+    //   // hope stable sort do th magic
+    //   |BookInfoShort {series, ..}|
+    //   series.clone().map(|(x, _)| x).unwrap_or(0x0FFFFFFFFFFFFFFF));
+    let books = &books.iter().enumerate()
+      .group_by(|(_, BookInfoShort {series, ..})| series)
+      .into_iter()
+      .map(|(series, books)| {
+        let books = books
+          .map(|(i, book)| format!(r#"{}\. {}"#, i, book))
+          .collect::<Vec<String>>()
+          .join("\n");
+        // let series = series.map(|(_, x)| *x.clone()).unwrap_or(String::new());
+        let series = match series {
+          None => String::new(),
+          Some((_, x)) => mdescape(x) // .clone(),
+        };
+        format!("{}\n{}", series, books)
+      })
       .collect::<Vec<String>>()
-      .join("\n");
+      .join("\n");      
     write!(f, r#"*{author}*
 index mark title command
 {books}

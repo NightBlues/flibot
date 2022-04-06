@@ -24,64 +24,17 @@ use crate::cache;
 enum Command {
   #[command(description = "display this text.")]
   Start,
-  #[command(description = "show author.")]
+  #[command(description = "show author. Example: /author 10805")]
   Author(u64),
-  #[command(description = "show a book.")]
+  #[command(description = "show a book. Example: /book 493146")]
   Book(u64),
-  #[command(description = "download a book.")]
+  #[command(description = "download a book. Exanmple: /download 493146")]
   Download(u64),
-  #[command(description = "handle a search.", separator = ";")]
+  #[command(description = "handle a search. Example: /search Анджей Сапковский", separator = ";")]
   Search(String)
   // #[command(description = "handle a username and an age.", parse_with = "split")]
   // UsernameAndAge { username: String, age: u8 },
 }
-
-    // use crate::{
-    //     payloads::{self, setters::*},
-    //     types::{
-    //         InputFile, InputMedia, InputMediaAnimation, InputMediaAudio, InputMediaDocument,
-    //         InputMediaPhoto, InputMediaVideo, InputSticker, MessageEntity, MessageEntityKind,
-    //         ParseMode,
-    //     },
-    // };
-
-
-    // async fn test_send_media_group() {
-    //     const CAPTION: &str = "caption";
-
-    //     to_form_ref(&payloads::SendMediaGroup::new(
-    //         0,
-    //         [
-    //             InputMedia::Photo(
-    //                 InputMediaPhoto::new(InputFile::file("./media/logo.png"))
-    //                     .caption(CAPTION)
-    //                     .parse_mode(ParseMode::MarkdownV2)
-    //                     .caption_entities(entities()),
-    //             ),
-    //             InputMedia::Video(
-    //                 InputMediaVideo::new(InputFile::file_id("17")).supports_streaming(true),
-    //             ),
-    //             InputMedia::Animation(
-    //                 InputMediaAnimation::new(InputFile::read(
-    //                     File::open("./media/example.gif").await.unwrap(),
-    //                 ))
-    //                 .thumb(InputFile::read(
-    //                     File::open("./media/logo.png").await.unwrap(),
-    //                 ))
-    //                 .duration(17),
-    //             ),
-    //             InputMedia::Audio(
-    //                 InputMediaAudio::new(InputFile::url("https://example.com".parse().unwrap()))
-    //                     .performer("a"),
-    //             ),
-    //             InputMedia::Document(InputMediaDocument::new(InputFile::memory(
-    //                 &b"Hello world!"[..],
-    //             ))),
-    //         ],
-    //     ))
-    //     .unwrap()
-    //     .await;
-    // }
 
 
 fn bookinfo_md(bookinfo: &parser::BookInfo) -> String {
@@ -301,7 +254,7 @@ async fn message_handler(
         res
       }
       Err(_) => {
-        let e = format!("Command '{}' not found!", text);
+        let e = format!("Command '{}' not found!\nTip: try '/search {}'", text, text);
         bot.send_message(m.chat.id, e).await?;
       }
     }

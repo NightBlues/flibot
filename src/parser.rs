@@ -13,6 +13,7 @@ pub use crate::parser_types::{
   AuthorInfo,
   author_id_from_url,
   book_id_from_url,
+  series_id_from_url,
 };
 
 
@@ -140,23 +141,35 @@ pub fn book_info(id: u64, html_doc: String) -> Result<BookInfo> {
     .map(|cover| cover.value().attr("src")).flatten()
     .map(|x| x.to_string());
 
-  let result = BookInfo {id:id as i64, title, author, fb2url, annotation, cover_url};
-    
+  let series = None; // TODO:
+
+  let result = BookInfo {id:id as i64, title, author, fb2url, annotation, cover_url, series};
+
   Ok(result)
 }
 
 
-fn try_find_mark(book: &ElementRef) -> Option<f32> {
-  let mut prev_elt = book.prev_sibling()?;
-  for _ in 0..4 {
+fn search_back<'a, F: FnOnce(ElementRef) -> bool + Copy>(
+  elt: &'a ElementRef,
+  count: u64,
+  checkfn: F)
+  -> Option<ElementRef<'a>> {
+  let mut prev_elt = elt.prev_sibling()?;
+  for _ in 0..count {
     let prev_elt_ = prev_elt.prev_sibling()?;
     prev_elt = prev_elt_;
-    let tag = ElementRef::wrap(prev_elt).map(|x| x.value().name());
-    if tag == Some("svg") {
-      break;
+    let ret_elt = ElementRef::wrap(prev_elt);
+    let res = ret_elt.map(checkfn);
+    if res == Some(true) {
+      return ElementRef::wrap(prev_elt)
     }
   }
-  let svg = ElementRef::wrap(prev_elt)?;
+
+  None
+}
+
+fn try_find_mark(book: &ElementRef) -> Option<f32> {
+  let svg = search_back(book, 4, |x| x.value().name() == "svg")?;
   // dbg!("svg = {}", svg);
   let selector = Selector::parse("rect title")
     .expect("selector invalid");
@@ -166,6 +179,21 @@ fn try_find_mark(book: &ElementRef) -> Option<f32> {
   let res = re.captures(&res)?.get(1)?.as_str().to_string().parse::<f32>().ok()?;
 
   Some(res)
+}
+
+
+fn try_find_series(book: &ElementRef) -> Option<(i64, String)> {
+  let series_link = search_back(
+    book, 500,
+    |x| x.value().attr("href")
+      .map(|h| h.starts_with("/s/"))
+      .unwrap_or(false)
+  )?;
+  let series_link : Anchor = series_link.try_into().ok()?;
+  let Anchor {title:series_title, ..} = series_link;
+  let series = series_id_from_url(&series_link.link).ok()? as i64;
+
+  Some((series, series_title))
 }
 
 /// get author info from book detail page
@@ -190,6 +218,7 @@ pub fn author_info(id: u64, html_doc: String) -> Result<AuthorInfo> {
   let selected = main_div.select(&selector);
   for book in selected {
     let mark = try_find_mark(&book);
+    let series = try_find_series(&book);
     let url : Result<Anchor> = book.try_into();
     if let Ok(b) = url {
       let title = b.title;
@@ -197,7 +226,7 @@ pub fn author_info(id: u64, html_doc: String) -> Result<AuthorInfo> {
         // let fb2_url = b.link;
         // TODO: find real <a> with fb2 link in siblings
         let fb2_url = format!("{}/fb2", b.link);
-        books.push(BookInfoShort {book_id, fb2_url, title, mark});
+        books.push(BookInfoShort {book_id, fb2_url, title, mark, series});
       }
     };
   }

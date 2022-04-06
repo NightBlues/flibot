@@ -9,6 +9,7 @@ use anyhow::{
 };
 use sqlx::sqlite::SqlitePool;
 
+
 #[derive(Clone)]
 pub struct Author {
   pub id: i64,
@@ -32,6 +33,8 @@ pub struct Book {
   pub cover: Option<Vec<u8>>,
   pub fb2_filename: Option<String>,
   pub fb2: Option<Vec<u8>>,
+  pub series: Option<i64>,
+  pub series_title: Option<String>,
 }
 
 
@@ -47,7 +50,9 @@ pub async fn get_book(pool: &SqlitePool, id: i64) -> Result<Book> {
     cover_url,
     cover,
     fb2_filename,
-    fb2
+    fb2,
+    series,
+    series_title
   FROM books
   WHERE id = $1
   "#, id).fetch_optional(pool)
@@ -70,7 +75,9 @@ pub async fn get_books_for_author(pool: &SqlitePool, id: i64
     cover_url,
     cover,
     fb2_filename,
-    fb2
+    fb2,
+    series,
+    series_title
   FROM books
   WHERE author = $1
   "#, id).fetch_all(pool)
@@ -85,19 +92,23 @@ pub async fn add_book(
   pool: &SqlitePool, book: Book
 ) -> Result<Book> {
   let Book {id, title, author, annotation,
-            cover_url, fb2_url, mark, ..} = book;
+            cover_url, fb2_url, mark, series, series_title, ..} = book;
   // let mut conn = pool.acquire().await?;
   let row = sqlx::query_as!(Book, r#"
     INSERT INTO books
-    (id, title, author, annotation, cover_url, fb2_url, mark)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    (id, title, author, annotation, cover_url, fb2_url, mark, series, series_title)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT DO UPDATE SET
      annotation=(CASE WHEN annotation IS NULL THEN $4
                  ELSE annotation END),
      cover_url=(CASE WHEN cover_url IS NULL THEN $5
                 ELSE cover_url END),
      mark=(CASE WHEN mark IS NULL THEN $7
-           ELSE mark END)
+           ELSE mark END),
+     series=(CASE WHEN series IS NULL THEN $8
+             ELSE series END),
+     series_title=(CASE WHEN series_title IS NULL THEN $9
+                   ELSE series_title END)
     RETURNING
        id,
        title,
@@ -108,8 +119,10 @@ pub async fn add_book(
        cover,
        fb2_url,
        fb2_filename,
-       fb2
-  "#, id, title, author, annotation, cover_url, fb2_url, mark)
+       fb2,
+       series,
+       series_title
+  "#, id, title, author, annotation, cover_url, fb2_url, mark, series, series_title)
   .fetch_optional(pool)
    // .execute(&mut conn)
     .await.context("db::add_book")?;
@@ -137,7 +150,9 @@ pub async fn save_book_cover(
       cover,
       fb2_url,
       fb2_filename,
-      fb2
+      fb2,
+      series,
+      series_title
   "#, cover, id).fetch_optional(pool)
    .await.context("db::save_cover")?;
   let res = row.ok_or_else(|| Error::msg("Nothing saved"))?;
@@ -167,7 +182,9 @@ pub async fn save_book_fb2(
       cover,
       fb2_url,
       fb2_filename,
-      fb2
+      fb2,
+      series,
+      series_title
   "#, fb2, fb2_filename, id).fetch_optional(pool)
    .await.context("db::save_fb2")?;
   let res = row.ok_or_else(|| Error::msg("Nothing saved"))?;
@@ -215,4 +232,3 @@ pub async fn add_author(
 
   Ok(res)
 }
-
