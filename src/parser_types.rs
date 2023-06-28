@@ -235,6 +235,23 @@ pub struct AuthorInfo {
   pub books: Vec<BookInfoShort>,
 }
 
+impl AuthorInfo {
+  pub fn split_parts(self, n: usize) -> Vec<AuthorInfo> {
+    if self.books.len() < n {
+      return vec![self];
+    }
+    let mut result : Vec<AuthorInfo> = vec![];
+    let mut i_prev = 0;
+    for i in (n..self.books.len()).step_by(n) {
+      let books = self.books[i_prev..i].to_vec();
+      let ai = AuthorInfo {books, .. self.clone()};
+      result.push(ai);
+      i_prev = i;
+    }
+    result
+  }
+}
+
 impl fmt::Display for AuthorInfo {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let AuthorInfo {author, books, ..} = self;

@@ -216,6 +216,7 @@ pub async fn add_author(
   author: Author,
 ) -> Result<Author> {
   let Author {id, name, url, books_list_fetched} = author;
+  // let tags =
   // only set to true if given explicit
   // dont reset to false on per-book requests
   let row = sqlx::query_as!(Author, r#"
@@ -229,6 +230,49 @@ pub async fn add_author(
   "#, id, name, url, books_list_fetched).fetch_optional(pool)
     .await.context("db::add_author")?;
   let res = row.ok_or_else(|| Error::msg("Nothing saved"))?;
+
+  Ok(res)
+}
+
+pub async fn search_author(
+  pool: &SqlitePool, text: &String
+) -> Result<Vec<Author>> {
+  let res = sqlx::query_as!(Author, r#"
+  SELECT
+    id,
+    name,
+    url,
+    books_list_fetched
+  FROM authors
+  WHERE name LIKE replace('%' || $1 || '%', ' ', '%')
+  "#, text).fetch_all(pool)
+    .await.context("db::search_author")?;
+
+  Ok(res)
+}
+
+
+pub async fn search_book(
+  pool: &SqlitePool, text: &String
+) -> Result<Vec<Book>> {
+  let res = sqlx::query_as!(Book, r#"
+  SELECT
+    id,
+    title,
+    author,
+    fb2_url,
+    mark,
+    annotation,
+    cover_url,
+    cover,
+    fb2_filename,
+    fb2,
+    series,
+    series_title
+  FROM books
+  WHERE title LIKE replace('%' || $1 || '%', ' ', '%')
+  "#, text).fetch_all(pool)
+    .await.context("db::search_book")?;
 
   Ok(res)
 }

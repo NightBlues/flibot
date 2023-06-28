@@ -31,7 +31,9 @@ enum Command {
   #[command(description = "download a book. Exanmple: /download 493146")]
   Download(u64),
   #[command(description = "handle a search. Example: /search Анджей Сапковский", separator = ";")]
-  Search(String)
+  Search(String),
+  #[command(description = "handle a search. Example: /searchcache Анджей Сапковский", separator = ";")]
+  SearchCache(String),
   // #[command(description = "handle a username and an age.", parse_with = "split")]
   // UsernameAndAge { username: String, age: u8 },
 }
@@ -129,6 +131,46 @@ async fn download_cmd_handler(
 }
 
 
+fn author_info_message(cached: &String, author_info: parser::AuthorInfo)
+                       -> (String, InlineKeyboardMarkup) {
+  let text = format!("{}{}", cached, &author_info);
+  let buttons : Vec<Vec<InlineKeyboardButton>> =
+    author_info.books.iter()
+    .enumerate().collect::<Vec<_>>()
+    .chunks(2)
+    .map(|row|
+         row.iter()
+         .map(|(i, parser::BookInfoShort {title, book_id, ..})| {
+           let t = format!("{} - {}", i, mdescape(title));
+           let b = format!("/book {}", book_id);
+           InlineKeyboardButton::callback(t, b)
+         }).collect())
+    .collect();
+  let keyboard = InlineKeyboardMarkup::new(buttons);        
+  (text, keyboard)
+}
+
+fn prepare_search_results(text: &String, results: Vec<(String, String)>) -> (String, InlineKeyboardMarkup) {
+  let buttons : Vec<Vec<InlineKeyboardButton>> = results.chunks(2)
+    .map(|row|
+         row.iter()
+         .map(|(title, book_id)|
+              InlineKeyboardButton::callback(
+                title.to_owned(), book_id.to_owned()))
+         .collect())
+  // .take(4)
+    .collect();
+  let keyboard = InlineKeyboardMarkup::new(buttons);
+  let response = format!(
+    "Found results for query \"{}\":\n{}",
+    text,
+    results.into_iter()
+      .map(|(t,b)| format!("{} (command {})", t, b))
+      .collect::<Vec<String>>().join("\n"));
+  (response, keyboard)
+}
+
+
 
 async fn answer(
   bot: AutoSend<Bot>,
@@ -150,29 +192,17 @@ async fn answer(
       } else {
         "".to_string()
       };
-      let base_url = fetcher::base_url(&fetcher::DEFAULT_CONF);
-      let full_link = mdescape(&*format!("{}a/{}", base_url, num));
-      let text = format!("{}{}", cached, &author_info)
-        .chars().take(4096 - full_link.len())
-        .collect::<String>() + &full_link;
-      log::info!("repling for author {}", num);
-      let buttons : Vec<Vec<InlineKeyboardButton>> =
-        author_info.books.iter()
-        .enumerate().collect::<Vec<_>>()
-        .chunks(2)
-        .map(|row|
-             row.iter()
-             .map(|(i, parser::BookInfoShort {title, book_id, ..})| {
-               let t = format!("{} - {}", i, mdescape(title));
-               let b = format!("/book {}", book_id);
-               InlineKeyboardButton::callback(t, b)
-             }).collect())
-        .collect();
-      let keyboard = InlineKeyboardMarkup::new(buttons);        
-      bot.parse_mode(ParseMode::MarkdownV2)
-        .send_message(message.chat.id, text)
-        .reply_markup(keyboard)
-        .await?;
+      // let base_url = fetcher::base_url(&fetcher::DEFAULT_CONF);
+      // let full_link = mdescape(&*format!("{}a/{}", base_url, num));
+      let bot = bot.parse_mode(ParseMode::MarkdownV2);
+      let ai_split = author_info.split_parts(70);
+      for ai in ai_split {
+        log::info!("repling for author {}", num);
+        let (text, keyboard) = author_info_message(&cached, ai);
+        bot.send_message(message.chat.id, text)
+          .reply_markup(keyboard)
+          .await?;
+      }
     },
     Command::Book(num) => {
       book_cmd_handler(bot, message, num, sqlxpool).await?;
@@ -189,7 +219,7 @@ async fn answer(
       let html = fetcher::search(&fetcher::DEFAULT_CONF, text.clone()).await?;
       let found = parser::search_result(html)?;
       let results : Vec<(String, String)> = found.iter()
-        .filter_map(|elt| match elt {
+         .filter_map(|elt| match elt {
           parser::SearchResult::Author {author, author_id} => {
             let author_id = format!("/author {}", author_id);
             let title = author.title.to_owned();
@@ -206,23 +236,20 @@ async fn answer(
         .enumerate()
         .map(|(i, (t, b))| (format!("{}. {}", i, t), b))
         .collect();
-      let buttons : Vec<Vec<InlineKeyboardButton>> = results.chunks(2)
-        .map(|row|
-             row.iter()
-             .map(|(title, book_id)|
-                  InlineKeyboardButton::callback(
-                    title.to_owned(), book_id.to_owned()))
-             .collect())
-        // .take(4)
-        .collect();
-      let keyboard = InlineKeyboardMarkup::new(buttons);
-      let response = format!(
-        "Found results for query \"{}\":\n{}",
-        text,
-        results.into_iter()
-          .map(|(t,b)| format!("{} (command {})", t, b))
-          .collect::<Vec<String>>().join("\n"));
+      let (response, keyboard) = prepare_search_results(&text, results);
       // dbg!(&response);
+      log::info!("repling for search \"{}\"", text);
+      bot.send_message(message.chat.id, response)
+        .reply_markup(keyboard).await?;
+    },
+    Command::SearchCache(text) => {
+      log::info!("searching in cache for \"{}\"", &text);
+      if text.trim().is_empty() {
+        bot.send_message(message.chat.id, "empty request").await?;
+        return Err(Error::msg("empty request"))
+      }
+      let results = cache::search_cached(sqlxpool, &text).await?;
+      let (response, keyboard) = prepare_search_results(&text, results);
       log::info!("repling for search \"{}\"", text);
       bot.send_message(message.chat.id, response)
         .reply_markup(keyboard).await?;
@@ -254,8 +281,20 @@ async fn message_handler(
         res
       }
       Err(_) => {
-        let e = format!("Command '{}' not found!\nTip: try '/search {}'", text, text);
-        bot.send_message(m.chat.id, e).await?;
+        // let e = format!("Command '{}' not found!\nTip: try '/search {}'", text, text);
+        // bot.send_message(m.chat.id, e).await?;
+        let cmd = Command::SearchCache(text.trim().to_string());
+        let chat_id = m.chat.id;
+        let res = answer(bot.clone(), m, cmd, &sqlxpool).await;
+        let res = match res {
+          Ok(()) => Ok(()),
+          Err(e) => {
+            let stre = format!("Command error: {}", e);
+            bot.send_message(chat_id, stre).await?;
+            Err(e)
+          }
+        }?;
+        res
       }
     }
   }

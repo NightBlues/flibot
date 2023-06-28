@@ -204,6 +204,90 @@
     },
     "query": "\n    INSERT INTO authors\n    (id, name, url, books_list_fetched, last_update)\n    VALUES ($1, $2, $3, $4, datetime('now'))\n    ON CONFLICT DO UPDATE SET\n      books_list_fetched = (CASE WHEN $4 THEN true\n                            ELSE books_list_fetched END)\n    RETURNING id, name, url, books_list_fetched\n  "
   },
+  "4253c65d06573798c2534c85fe34d7a694f7f32af8ad552d8c339767684e53b5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "author",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "fb2_url",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "mark",
+          "ordinal": 4,
+          "type_info": "Float"
+        },
+        {
+          "name": "annotation",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover_url",
+          "ordinal": 6,
+          "type_info": "Text"
+        },
+        {
+          "name": "cover",
+          "ordinal": 7,
+          "type_info": "Blob"
+        },
+        {
+          "name": "fb2_filename",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "fb2",
+          "ordinal": 9,
+          "type_info": "Blob"
+        },
+        {
+          "name": "series",
+          "ordinal": 10,
+          "type_info": "Int64"
+        },
+        {
+          "name": "series_title",
+          "ordinal": 11,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n  SELECT\n    id,\n    title,\n    author,\n    fb2_url,\n    mark,\n    annotation,\n    cover_url,\n    cover,\n    fb2_filename,\n    fb2,\n    series,\n    series_title\n  FROM books\n  WHERE title LIKE replace('%' || $1 || '%', ' ', '%')\n  "
+  },
   "5e6b89eff0b5fb70adf8cd2cad94ad9a28152a4e81d47b873bdc99b45dc7d3d1": {
     "describe": {
       "columns": [
@@ -491,5 +575,41 @@
       }
     },
     "query": "\n  SELECT\n    id,\n    name,\n    url,\n    books_list_fetched\n  FROM authors\n  WHERE id = $1\n  "
+  },
+  "faf536ade3a607fa230660a62845cbd4ee8107fca27a6bb448547a5347edd7c2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "url",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "books_list_fetched",
+          "ordinal": 3,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n  SELECT\n    id,\n    name,\n    url,\n    books_list_fetched\n  FROM authors\n  WHERE name LIKE replace('%' || $1 || '%', ' ', '%')\n  "
   }
 }

@@ -133,4 +133,41 @@ pub async fn author_page_cached(
 
   Ok((c, dbauthor, author_info))
 }
-      
+
+
+pub async fn search_cached(
+  sqlxpool: &sqlx::sqlite::SqlitePool,
+  text: &String,
+) -> Result<Vec<(String, String)>> {
+  let dbauthors = db::search_author(sqlxpool, &text).await?;
+  let mut results : Vec<(String, String)> = dbauthors.iter()
+    .filter_map(|elt| match elt {
+      db::Author {id, name, ..} => {
+        let author_id = format!("/author {}", id);
+        let title = name.to_owned();
+        Some((title, author_id))
+      },
+    })
+    .take(15)
+    .enumerate()
+    .map(|(i, (t, b))| (format!("{}. {}", i, t), b))
+    .collect();
+  let dbbooks = db::search_book(sqlxpool, &text).await?;
+  let results2 : Vec<(String, String)> = dbbooks.iter()
+    .filter_map(|elt| match elt {
+      db::Book {id, title, ..} => {
+        let book_id = format!("/book {}", id);
+        let title = title.to_owned();
+        Some((title, book_id))
+      },
+    })
+    .take(15)
+    .enumerate()
+    .map(|(i, (t, b))| (format!("{}. {}", i, t), b))
+    .collect();
+  results.extend(results2);
+
+  Ok(results)
+}
+
+
