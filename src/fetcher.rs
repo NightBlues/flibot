@@ -120,7 +120,7 @@ pub async fn cover_image(conf: &'static Conf<'static>, path: String) -> Result<b
 
 /// download fb2 book
 pub async fn fb2(conf: &'static Conf<'static>, path: String)
-                 -> Result<(bytes::Bytes, String)> {
+                 -> Result<(bytes::Bytes, Option<String>)> {
   // reqwest::header::CONTENT_DISPOSITION
   let request = _get_page(conf, path, None).await?;
   let resp = request.send().await?;
@@ -131,12 +131,10 @@ pub async fn fb2(conf: &'static Conf<'static>, path: String)
       let value = value.to_str().ok()?;
       // dbg!(&value);
       let match_ = re.captures_iter(value).next()?;
-      let match_ = match_.get(1)?.as_str();
+      let match_ = match_.get(1)?.as_str().to_string();
       Some(match_)
     })
-    .flatten()
-    .unwrap_or("file1.zip")
-    .to_string();
+    .flatten();
   let data = resp.bytes().await?;
 
   Ok((data, filename))

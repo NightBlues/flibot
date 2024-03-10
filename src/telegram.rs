@@ -63,7 +63,7 @@ async fn book_cmd_handler(
   num: u64,
   sqlxpool: &sqlx::sqlite::SqlitePool,
 ) -> Result<()> {
-  let (dbbook, book_info) = cache::book_page_cached(sqlxpool, num).await?;
+  let (dbbook, book_info, _dbauthor) = cache::book_page_cached(sqlxpool, num).await?;
   let text = bookinfo_md(&book_info);
   let cover = cache::book_cover_cached(sqlxpool, dbbook).await?;
   log::info!("repling for book {}", num);
@@ -114,8 +114,9 @@ async fn download_cmd_handler(
   sqlxpool: &sqlx::sqlite::SqlitePool,
 ) -> Result<()> {
   
-  let (dbbook, book_info) = cache::book_page_cached(sqlxpool, num).await?;
-  let (filename, fb2) = cache::book_fb2_cached(sqlxpool, dbbook.clone()).await?;
+  let (dbbook, book_info, dbauthor) =
+    cache::book_page_cached(sqlxpool, num).await?;
+  let (filename, fb2) = cache::book_fb2_cached(sqlxpool, dbbook.clone(), dbauthor.clone()).await?;
   let fb2 = InputFile::memory(fb2).file_name(filename);
   let description = format!(
     r"*{author} \- {title}*",

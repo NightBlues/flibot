@@ -3,6 +3,7 @@ use anyhow::{
   // Error,
   Context,
 };
+use translit::{Gost779B, ToLatin, Language};
 
 use crate::fetcher;
 use crate::parser;
@@ -12,10 +13,10 @@ use crate::db;
 pub async fn book_page_cached(
   sqlxpool: &sqlx::sqlite::SqlitePool,
   num: u64,
-) -> Result<(db::Book, parser::BookInfo)> {
+) -> Result<(db::Book, parser::BookInfo, db::Author)> {
   let path = format!("/b/{}", num);
   let dbbook = db::get_book(sqlxpool, num as i64).await.ok();
-  let (dbbook, book_info) = match dbbook {
+  let (dbbook, book_info, dbauthor) = match dbbook {
     // if annotation is not filled - our book is from BookInfoShort
     Some(ref dbbook @ db::Book {annotation:Some(ref a), ..}
     ) => {
@@ -25,8 +26,8 @@ pub async fn book_page_cached(
       let dbauthor = db::get_author(sqlxpool, dbbook.author).await?;
       // let dbauthor : Result<db::Author> = dbauthor?;
       let res : Result<parser::BookInfo> =
-        Ok((dbbook.clone(), dbauthor, annotation).into());
-      res.map(|x| (dbbook, x))
+        Ok((dbbook.clone(), dbauthor.clone(), annotation).into());
+      res.map(|x| (dbbook, x, dbauthor))
     },
     // if no dbbook or dbbook without annotation - do upsert
     _ => {
@@ -36,13 +37,13 @@ pub async fn book_page_cached(
       let book_info = parser::book_info(num, html).context("parser")?;
       let book : db::Book = book_info.clone().try_into()?;
       let author : db::Author = book_info.clone().try_into()?;
-      let _author = db::add_author(sqlxpool, author).await?;
+      let author = db::add_author(sqlxpool, author).await?;
       let dbbook = db::add_book(sqlxpool, book).await?;
       // let dbbook = db::get_book(sqlxpool, num as i64).await?;
-      Ok((dbbook, book_info))
+      Ok((dbbook, book_info, author))
     },
   }?;
-  Ok((dbbook, book_info))
+  Ok((dbbook, book_info, dbauthor))
 }
 
 pub async fn book_cover_cached(
@@ -72,7 +73,7 @@ pub async fn book_cover_cached(
 
 pub async fn book_fb2_cached(
   sqlxpool: &sqlx::sqlite::SqlitePool,
-  dbbook: db::Book,
+  dbbook: db::Book, author: db::Author
 ) -> Result<(String, bytes::Bytes)> {
   let fb2 = match dbbook {
     db::Book {id, fb2:Some(fb2), fb2_filename:Some(fname), ..} => {
@@ -81,20 +82,26 @@ pub async fn book_fb2_cached(
         Ok((fname, bytes::Bytes::from(fb2)));
       res
     },
-    db::Book {id, fb2_url, ..} => {
+    db::Book {id, fb2_url, title, ..} => {
       log::info!("fetching fb2 for book {}", id);
       let (fb2, filename) =
         fetcher::fb2(&fetcher::DEFAULT_CONF, fb2_url).await?;
-      let _ = db::save_book_fb2(sqlxpool, id,
-                                filename.clone(), fb2.clone()).await?;
+      let filename = filename.unwrap_or_else(|| {
+        let db::Author { name, .. } = author;
+        let author = Gost779B::new(Language::Ru).to_latin(&name);
+        let title = Gost779B::new(Language::Ru).to_latin(&title);
+        format!("{}_{}_{}.zip", id, author, title)
+      });
+      let _ = db::save_book_fb2(
+        sqlxpool, id, filename.clone(), fb2.clone()).await?;
       Ok((filename, fb2))
     }
   }?;
 
   Ok(fb2)
 }
-      
- 
+
+
 pub async fn author_page_cached(
   sqlxpool: &sqlx::sqlite::SqlitePool,
   num: u64,
