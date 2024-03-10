@@ -7,6 +7,7 @@ use anyhow::{
   Result,
   Context,
 };
+use derive_more::{Display};
 use sqlx::sqlite::SqlitePool;
 
 
@@ -35,6 +36,13 @@ pub struct Book {
   pub fb2: Option<Vec<u8>>,
   pub series: Option<i64>,
   pub series_title: Option<String>,
+}
+
+#[derive(Display, Clone)]
+#[display(fmt = "total books: {:?},\nfb2: {:?}\n", total_books, total_fb2)]
+pub struct Stats {
+  pub total_books: Option<i32>,
+  pub total_fb2: Option<i32>,
 }
 
 
@@ -275,4 +283,27 @@ pub async fn search_book(
     .await.context("db::search_book")?;
 
   Ok(res)
+}
+
+
+pub async fn get_stats(pool: &SqlitePool) -> Result<Stats> {
+  let row = sqlx::query_as!(Stats, r#"
+  SELECT DISTINCT
+      CAST(COUNT(books.id) OVER () AS bigint) as total_books,
+      CAST(COUNT(books.id) FILTER (WHERE fb2_filename IS NOT NULL) OVER () AS BIGINT) as total_fb2
+  FROM books
+  "#).fetch_optional(pool)
+    .await.context("db::get_stats")?;
+  let res = row.ok_or_else(|| Error::msg("Stats not found"))?;
+  Ok(res)
+}
+
+pub async fn clear_authors(pool: &SqlitePool) -> Result<()> {
+  let row = sqlx::query_as!(Stats, r#"
+  UPDATE authors SET
+    books_list_fetched=false
+  "#).fetch_optional(pool)
+    .await.context("db::clear_authors")?;
+  // let res = row.ok_or_else(|| Error::msg("Could not clear authors"))?;
+  Ok(())
 }

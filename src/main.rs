@@ -50,8 +50,12 @@ async fn main() -> Result<()> {
 
   sqlx::migrate!().run(&sqlxpool).await?;
 
+  let admins : Vec<String> = std::env::var("ADMINS")
+    .map(|x| x.split(",").map(|x| x.to_string()).collect())
+    .unwrap_or(vec![]);
+
   // uncomment to start)
-  telegram::start_bot(sqlxpool).await?;
+  telegram::start_bot(sqlxpool, admins).await?;
   
   Ok(())
 }

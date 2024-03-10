@@ -8,6 +8,7 @@ use teloxide::types::{
   ParseMode,
   InlineKeyboardMarkup,
   InlineKeyboardButton,
+  User,
 };
 use teloxide::utils::markdown::{
   escape as mdescape,
@@ -15,7 +16,7 @@ use teloxide::utils::markdown::{
 
 use crate::fetcher;
 use crate::parser;
-// use crate::db;
+use crate::db;
 use crate::cache;
 
 
@@ -32,6 +33,10 @@ enum Command {
   Download(u64),
   #[command(description = "handle a search. Example: /search Анджей Сапковский", separator = ";")]
   Search(String),
+  #[command(description = "show cache stats")]
+  CacheStats,
+  #[command(description = "clear cache (uncache authors)")]
+  CacheClear,
   #[command(description = "handle a search. Example: /searchcache Анджей Сапковский", separator = ";")]
   SearchCache(String),
   // #[command(description = "handle a username and an age.", parse_with = "split")]
@@ -171,13 +176,33 @@ fn prepare_search_results(text: &String, results: Vec<(String, String)>) -> (Str
   (response, keyboard)
 }
 
-
+/// Check that message came from admin
+fn check_admin(admins: &Vec<String>, message: &Message) -> Result<()> {
+  let user = message.from();
+  let username : Option<String> = user
+    .map(|u| {
+      let User {username, ..} = u;
+      (*username).clone()
+    })
+    .flatten();
+  let username = username.map(
+    |username|
+    admins.iter().find(|adm| **adm == username)
+      .map(|x| x.clone())
+  ).flatten();
+  if username == None {
+    Err(Error::msg("Access denied"))
+  } else {
+    Ok(())
+  }
+}
 
 async fn answer(
   bot: AutoSend<Bot>,
   message: Message,
   command: Command,
   sqlxpool: &sqlx::sqlite::SqlitePool,
+  admins: &Vec<String>
 ) -> Result<()> {
   match command {
     Command::Start => {
@@ -254,7 +279,30 @@ async fn answer(
       log::info!("repling for search \"{}\"", text);
       bot.send_message(message.chat.id, response)
         .reply_markup(keyboard).await?;
-    }
+    },
+    Command::CacheStats => {
+      match check_admin(admins, &message) {
+        Ok(()) => {
+          let stats = db::get_stats(sqlxpool).await?;
+          let response = format!("{}", stats);
+          bot.send_message(message.chat.id, response).await?
+        }
+        Err(e) => {
+          bot.send_message(message.chat.id, e.to_string()).await?
+        }
+      };
+    },
+    Command::CacheClear => {
+      match check_admin(admins, &message) {
+        Ok(()) => {
+          db::clear_authors(sqlxpool).await?;
+          bot.send_message(message.chat.id, "Authors cleared").await?
+        },
+        Err(e) => {
+          bot.send_message(message.chat.id, e.to_string()).await?
+        }
+      };
+    },
   };
 
   Ok(())
@@ -264,13 +312,14 @@ async fn message_handler(
   m: Message,
   bot: AutoSend<Bot>,
   sqlxpool: sqlx::sqlite::SqlitePool,
+  admins: Vec<String>
 ) -> Result<()> {
   if let Some(text) = m.text() {
     log::info!("Command: {}", text);
     match Command::parse(text, "flibot") {
       Ok(cmd) => {
         let chat_id = m.chat.id;
-        let res = answer(bot.clone(), m, cmd, &sqlxpool).await;
+        let res = answer(bot.clone(), m, cmd, &sqlxpool, &admins).await;
         let res = match res {
           Ok(()) => Ok(()),
           Err(e) => {
@@ -286,7 +335,7 @@ async fn message_handler(
         // bot.send_message(m.chat.id, e).await?;
         let cmd = Command::SearchCache(text.trim().to_string());
         let chat_id = m.chat.id;
-        let res = answer(bot.clone(), m, cmd, &sqlxpool).await;
+        let res = answer(bot.clone(), m, cmd, &sqlxpool, &admins).await;
         let res = match res {
           Ok(()) => Ok(()),
           Err(e) => {
@@ -308,6 +357,7 @@ async fn callback_handler(
   q: CallbackQuery,
   bot: AutoSend<Bot>,
   sqlxpool: sqlx::sqlite::SqlitePool,
+  admins: Vec<String>
 ) -> Result<()> {
   if let Some(command) = q.data {
     log::info!("Reply command: {}", command);
@@ -319,7 +369,7 @@ async fn callback_handler(
         match Command::parse(&command, "flibot") {
           Ok(cmd) => {
             let chat_id = m.chat.id;
-            let res = answer(bot.clone(), m, cmd, &sqlxpool).await;
+            let res = answer(bot.clone(), m, cmd, &sqlxpool, &admins).await;
             let res = match res {
               Ok(()) => Ok(()),
               Err(e) => {
@@ -349,7 +399,7 @@ async fn callback_handler(
 }
 
 
-pub async fn start_bot(sqlxpool : sqlx::sqlite::SqlitePool) -> Result<()> {
+pub async fn start_bot(sqlxpool : sqlx::sqlite::SqlitePool, admins: Vec<String>) -> Result<()> {
   // TELOXIDE_TOKEN
   // teloxide::enable_logging!();
   log::info!("Starting flibot...");
@@ -367,7 +417,7 @@ pub async fn start_bot(sqlxpool : sqlx::sqlite::SqlitePool) -> Result<()> {
     .branch(Update::filter_message().endpoint(message_handler))
     .branch(Update::filter_callback_query().endpoint(callback_handler));
   Dispatcher::builder(bot, handler)
-    .dependencies(dptree::deps![sqlxpool])
+    .dependencies(dptree::deps![sqlxpool, admins])
     .build().setup_ctrlc_handler().dispatch().await;
 
 

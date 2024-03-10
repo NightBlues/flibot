@@ -11,5 +11,6 @@ Flibot is a simple telegram bot that helps searching and downloading books from 
 # Run
 - `export DATABASE_URL=sqlite://db.sqlite`
 - `export TELOXIDE_TOKEN=...`
+- `export ADMINS=username1,username2`
 - `RUST_LOG=debug cargo run`
 
