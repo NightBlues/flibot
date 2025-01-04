@@ -8,6 +8,7 @@ mod db;
 mod fetcher;
 mod parser_types;
 mod parser;
+mod filedb;
 mod cache;
 mod telegram;
 // use fetcher::DEFAULT_CONF;

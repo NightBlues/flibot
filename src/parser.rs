@@ -168,7 +168,7 @@ fn search_back<'a, F: FnOnce(ElementRef) -> bool + Copy>(
   None
 }
 
-fn try_find_mark(book: &ElementRef) -> Option<f32> {
+fn try_find_mark(book: &ElementRef) -> Option<f64> {
   let svg = search_back(book, 4, |x| x.value().name() == "svg")?;
   // dbg!("svg = {}", svg);
   let selector = Selector::parse("rect title")
@@ -176,7 +176,7 @@ fn try_find_mark(book: &ElementRef) -> Option<f32> {
   let res = svg.select(&selector).next()?.text().map(|x| x.to_string())
     .collect::<Vec<String>>().join("");
   let re = Regex::new(r#".*: ([0-9.]+)"#).ok()?;
-  let res = re.captures(&res)?.get(1)?.as_str().to_string().parse::<f32>().ok()?;
+  let res = re.captures(&res)?.get(1)?.as_str().to_string().parse::<f64>().ok()?;
 
   Some(res)
 }

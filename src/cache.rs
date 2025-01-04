@@ -8,6 +8,7 @@ use translit::{Gost779B, ToLatin, Language};
 use crate::fetcher;
 use crate::parser;
 use crate::db;
+use crate::filedb;
 
 
 pub async fn book_page_cached(
@@ -70,35 +71,59 @@ pub async fn book_cover_cached(
   Ok(cover)
 }
 
-
-pub async fn book_fb2_cached(
-  sqlxpool: &sqlx::sqlite::SqlitePool,
-  dbbook: db::Book, author: db::Author
-) -> Result<(String, bytes::Bytes)> {
-  let fb2 = match dbbook {
-    db::Book {id, fb2:Some(fb2), fb2_filename:Some(fname), ..} => {
-      log::info!("[cache] fb2 for book {}", id);
-      let res : Result<(String, bytes::Bytes)> =
-        Ok((fname, bytes::Bytes::from(fb2)));
-      res
-    },
-    db::Book {id, fb2_url, title, ..} => {
-      log::info!("fetching fb2 for book {}", id);
-      let (fb2, filename) =
+async fn fetch_fb2(
+    sqlxpool: &sqlx::sqlite::SqlitePool,
+    id: i64, fb2_url: String, title: String,
+    author: &db::Author) -> Result<(String, bytes::Bytes)> {
+    log::info!("fetching fb2 for book {}", id);
+    let (fb2, filename) =
         fetcher::fb2(&fetcher::DEFAULT_CONF, fb2_url).await?;
-      let filename = filename.unwrap_or_else(|| {
+    let fb2_sha1 = filedb::fb2_sha1(fb2.clone())?;
+    log::info!("DBG: fetching fb2 for book {}: sha1 = {}", id, fb2_sha1);
+    let filename = filename.unwrap_or_else(|| {
         let db::Author { name, .. } = author;
-        let author = Gost779B::new(Language::Ru).to_latin(&name);
+        let author = Gost779B::new(Language::Ru).to_latin(name);
         let title = Gost779B::new(Language::Ru).to_latin(&title);
         format!("{}_{}_{}.zip", id, author, title)
-      });
-      let _ = db::save_book_fb2(
-        sqlxpool, id, filename.clone(), fb2.clone()).await?;
-      Ok((filename, fb2))
-    }
-  }?;
+    });
+    filedb::put_file(fb2_sha1.clone(), fb2.clone())?;
+    let _ = db::save_book_fb2(
+        sqlxpool, id, filename.clone(), fb2_sha1).await?;
+    Ok((filename, fb2))
+}
 
-  Ok(fb2)
+
+pub async fn book_fb2_cached(
+    sqlxpool: &sqlx::sqlite::SqlitePool,
+    dbbook: db::Book, author: db::Author
+) -> Result<(String, bytes::Bytes)> {
+    let fb2 = match dbbook {
+        db::Book {id, fb2_sha1:Some(fb2_sha1),
+                  fb2_filename:Some(fname),
+                  fb2_url, title, ..} => {
+            log::info!("[cache] fb2 for book {}", id);
+            let fb2 = filedb::get_file(fb2_sha1);
+            match fb2 {
+                Err(_) => {
+                    log::warn!("[cache] cachemiss for book {}", id);
+                    let res : Result<(String, bytes::Bytes)> = fetch_fb2(
+                        sqlxpool, id, fb2_url, title, &author).await;
+                    res
+                },
+                Ok(fb2) => {
+                    let res : Result<(String, bytes::Bytes)> = Ok((fname, fb2));
+                    res
+                }
+            }
+        },
+        db::Book {id, fb2_url, title, ..} => {
+            let (filename, fb2) = fetch_fb2(
+                sqlxpool, id, fb2_url, title, &author).await?;
+            Ok((filename, fb2))
+        }
+    }?;
+
+    Ok(fb2)
 }
 
 
@@ -146,7 +171,7 @@ pub async fn search_cached(
   sqlxpool: &sqlx::sqlite::SqlitePool,
   text: &String,
 ) -> Result<Vec<(String, String)>> {
-  let dbauthors = db::search_author(sqlxpool, &text).await?;
+  let dbauthors = db::search_author(sqlxpool, text).await?;
   let mut results : Vec<(String, String)> = dbauthors.iter()
     .filter_map(|elt| match elt {
       db::Author {id, name, ..} => {
@@ -159,7 +184,7 @@ pub async fn search_cached(
     .enumerate()
     .map(|(i, (t, b))| (format!("{}. {}", i, t), b))
     .collect();
-  let dbbooks = db::search_book(sqlxpool, &text).await?;
+  let dbbooks = db::search_book(sqlxpool, text).await?;
   let results2 : Vec<(String, String)> = dbbooks.iter()
     .filter_map(|elt| match elt {
       db::Book {id, title, ..} => {

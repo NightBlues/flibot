@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n  SELECT DISTINCT\n      CAST(COUNT(books.id) OVER () AS bigint) as total_books,\n      CAST(COUNT(books.id) FILTER (WHERE fb2_filename IS NOT NULL) OVER () AS BIGINT) as total_fb2\n  FROM books\n  ",
+  "describe": {
+    "columns": [
+      {
+        "name": "total_books",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total_fb2",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ed55f497c90a3f72e9378da16c8321a1a6f94d06a1613212243b860a509e0b4a"
+}

@@ -28,12 +28,12 @@ pub struct Book {
   pub author: i64,
   pub fb2_url: String,
   // optional fields, filled on demand
-  pub mark: Option<f32>,
+  pub mark: Option<f64>,
   pub annotation: Option<String>,
   pub cover_url: Option<String>,
   pub cover: Option<Vec<u8>>,
   pub fb2_filename: Option<String>,
-  pub fb2: Option<Vec<u8>>,
+  pub fb2_sha1: Option<String>,
   pub series: Option<i64>,
   pub series_title: Option<String>,
 }
@@ -41,8 +41,8 @@ pub struct Book {
 #[derive(Display, Clone)]
 #[display(fmt = "total books: {:?},\nfb2: {:?}\n", total_books, total_fb2)]
 pub struct Stats {
-  pub total_books: Option<i32>,
-  pub total_fb2: Option<i32>,
+  pub total_books: Option<i64>,
+  pub total_fb2: Option<i64>,
 }
 
 
@@ -58,7 +58,7 @@ pub async fn get_book(pool: &SqlitePool, id: i64) -> Result<Book> {
     cover_url,
     cover,
     fb2_filename,
-    fb2,
+    fb2_sha1,
     series,
     series_title
   FROM books
@@ -83,7 +83,7 @@ pub async fn get_books_for_author(pool: &SqlitePool, id: i64
     cover_url,
     cover,
     fb2_filename,
-    fb2,
+    fb2_sha1,
     series,
     series_title
   FROM books
@@ -127,7 +127,7 @@ pub async fn add_book(
        cover,
        fb2_url,
        fb2_filename,
-       fb2,
+       fb2_sha1,
        series,
        series_title
   "#, id, title, author, annotation, cover_url, fb2_url, mark, series, series_title)
@@ -158,7 +158,7 @@ pub async fn save_book_cover(
       cover,
       fb2_url,
       fb2_filename,
-      fb2,
+      fb2_sha1,
       series,
       series_title
   "#, cover, id).fetch_optional(pool)
@@ -172,13 +172,13 @@ pub async fn save_book_fb2(
   pool: &SqlitePool,
   id: i64,
   fb2_filename: String,
-  fb2: bytes::Bytes
+  fb2_sha1: String,
 ) -> Result<Book> {
   // let cover : Vec<u8> = cover.as_ptr().into();
-  let fb2 : Vec<u8> = (*fb2).into();
+  // let fb2 : Vec<u8> = (*fb2).into();
   let row = sqlx::query_as!(Book, r#"
     UPDATE books
-    SET fb2=$1, fb2_filename=$2
+    SET fb2_sha1=$1, fb2_filename=$2
     WHERE id=$3
     RETURNING
       id,
@@ -190,10 +190,10 @@ pub async fn save_book_fb2(
       cover,
       fb2_url,
       fb2_filename,
-      fb2,
+      fb2_sha1,
       series,
       series_title
-  "#, fb2, fb2_filename, id).fetch_optional(pool)
+  "#, fb2_sha1, fb2_filename, id).fetch_optional(pool)
    .await.context("db::save_fb2")?;
   let res = row.ok_or_else(|| Error::msg("Nothing saved"))?;
 
@@ -274,7 +274,7 @@ pub async fn search_book(
     cover_url,
     cover,
     fb2_filename,
-    fb2,
+    fb2_sha1,
     series,
     series_title
   FROM books
@@ -299,7 +299,7 @@ pub async fn get_stats(pool: &SqlitePool) -> Result<Stats> {
 }
 
 pub async fn clear_authors(pool: &SqlitePool) -> Result<()> {
-  let row = sqlx::query_as!(Stats, r#"
+  let _row = sqlx::query_as!(Stats, r#"
   UPDATE authors SET
     books_list_fetched=false
   "#).fetch_optional(pool)

@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n    INSERT INTO authors\n    (id, name, url, books_list_fetched, last_update)\n    VALUES ($1, $2, $3, $4, datetime('now'))\n    ON CONFLICT DO UPDATE SET\n      books_list_fetched = (CASE WHEN $4 THEN true\n                            ELSE books_list_fetched END)\n    RETURNING id, name, url, books_list_fetched\n  ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "books_list_fetched",
+        "ordinal": 3,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2f5a76fc3179240f5ff1051fb3ce33c857a3b037f091b04cf9a4d2d379f6ef1a"
+}

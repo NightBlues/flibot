@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n  SELECT\n    id,\n    name,\n    url,\n    books_list_fetched\n  FROM authors\n  WHERE name LIKE replace('%' || $1 || '%', ' ', '%')\n  ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "books_list_fetched",
+        "ordinal": 3,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "faf536ade3a607fa230660a62845cbd4ee8107fca27a6bb448547a5347edd7c2"
+}

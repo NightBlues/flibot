@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n  UPDATE authors SET\n    books_list_fetched=false\n  ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "2572fdfab88b44c48870b5707c1830d066631d4b02a005b79fbe2e6bd35e8b3b"
+}

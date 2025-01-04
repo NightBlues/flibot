@@ -118,7 +118,7 @@ impl TryFrom<BookInfo> for db::Book {
       cover:None,
       fb2_url,
       fb2_filename:None,
-      fb2:None,
+      fb2_sha1:None,
       series,
       series_title
     })
@@ -170,7 +170,7 @@ pub struct BookInfoShort {
   pub book_id: u64,
   pub fb2_url: String,
   pub title: String,
-  pub mark: Option<f32>,
+  pub mark: Option<f64>,
   pub series: Option<(i64, String)>,
 }
 
@@ -220,7 +220,7 @@ impl From<(i64, BookInfoShort)> for db::Book {
       annotation:None,
       cover_url:None,
       cover:None,
-      fb2:None,
+      fb2_sha1:None,
       fb2_filename:None,
       series,
       series_title

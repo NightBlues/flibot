@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "\n    UPDATE books\n    SET fb2_sha1=$1, fb2_filename=$2\n    WHERE id=$3\n    RETURNING\n      id,\n      title,\n      author,\n      mark,\n      annotation,\n      cover_url,\n      cover,\n      fb2_url,\n      fb2_filename,\n      fb2_sha1,\n      series,\n      series_title\n  ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "author",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "mark",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "annotation",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "cover_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "cover",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "fb2_url",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "fb2_filename",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "fb2_sha1",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "series",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "series_title",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "06bc216130bd1cebb74f2a74587fc5f3c1f4f84b683fc3835154f80978a7a0b0"
+}
